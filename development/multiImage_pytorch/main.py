@@ -117,7 +117,7 @@ if args.mode == 'train':
             optimizer.zero_grad() 
             outputs = model(batch_inputs)
             loss    = loss_function(outputs, batch_svbrdf)
-            loss.backward()
+            accelerate.backward(loss)
             optimizer.step()
 
             print("Epoch {:d}, Batch {:d}, loss: {:f}".format(epoch, i + 1, loss.item()))
