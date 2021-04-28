@@ -1,6 +1,6 @@
 #!/bin/bash
 
-input_dir="/content/materialsData_multi_image/train"
+input_dir="./data/test"
 image_count=10
 model_dir="./models"
 
