@@ -204,6 +204,12 @@ class GlobalTrackLayer(nn.Module):
             global_track = local_mean
 
         return self.selu(self.fully_connected(global_track))
+class Identity(torch.nn.Module):
+    def __init__(self):
+        super(Identity, self).__init__()
+        
+    def forward(self, x):
+        return x
 
 class Generator(nn.Module):
     input_channel_count  = 3
@@ -318,6 +324,32 @@ class Generator(nn.Module):
         global_track  = self.gtd1(up1_mean,    global_track)
 
         return up1, global_track
+    def delete(self):
+        self.gtd1 = Identity()
+        self.gtd2 = Identity()
+        self.gtd3 = Identity()
+        self.gtd4 = Identity()
+        self.gtd5 = Identity()
+        self.gtd6 = Identity()
+        self.gtd7 = Identity()
+        self.gtd8 = Identity()
+        self.gte1 = Identity()
+        self.gte2 = Identity()
+        self.gte3 = Identity()
+        self.gte4 = Identity()
+        self.gte5 = Identity()
+        self.gte6 = Identity()
+        self.gte7 = Identity()
+        self.gte8 = Identity()
+        self.dec1 = Identity()
+        self.dec2 = Identity()
+        self.dec3 = Identity()
+        self.dec4 = Identity()
+        self.dec5 = Identity()
+        self.dec6 = Identity()
+        self.dec7 = Identity()
+        self.dec8 = Identity()
+
 
 class SingleViewModel(nn.Module):
     def __init__(self, use_coords=True):
