@@ -51,6 +51,41 @@ class RenderingLoss(nn.Module):
 
         return loss
 
+class RenderingLoss2(nn.Module):
+    def __init__(self, renderer, scene):
+        super(RenderingLoss2, self).__init__()
+        
+        self.renderer = renderer
+        self.random_configuration_count   = 3
+        self.specular_configuration_count = 6
+        self.scene = scene
+
+    def forward(self, input, target):
+        batch_size = input.shape[0]
+
+        batch_input_renderings = []
+        batch_target_renderings = []
+        for i in range(batch_size):
+            # scenes = [self.scene]
+            input_svbrdf  = input[i]
+            target_svbrdf = target[i]
+            input_renderings  = []
+            target_renderings = []
+            # for scene in scenes:
+            # print("type", type(self.scene))
+            input_renderings.append(self.renderer.render(self.scene, input_svbrdf))
+            target_renderings.append(self.renderer.render(self.scene, target_svbrdf))
+            batch_input_renderings.append(torch.cat(input_renderings, dim=0))
+            batch_target_renderings.append(torch.cat(target_renderings, dim=0))
+
+        epsilon_render    = 0.1
+        batch_input_renderings_logged  = torch.log(torch.stack(batch_input_renderings, dim=0)  + epsilon_render)
+        batch_target_renderings_logged = torch.log(torch.stack(batch_target_renderings, dim=0) + epsilon_render)
+
+        loss = nn.functional.l1_loss(batch_input_renderings_logged, batch_target_renderings_logged)
+
+        return loss
+
 class MixedLoss(nn.Module):
     def __init__(self, renderer, l1_weight = 0.1):
         super(MixedLoss, self).__init__()
@@ -61,3 +96,16 @@ class MixedLoss(nn.Module):
 
     def forward(self, input, target):
         return self.l1_weight * self.l1_loss(input, target) + self.rendering_loss(input, target)
+
+class MixedLoss2(nn.Module):
+    def __init__(self, renderer, scene, l1_weight = 0.1):
+        super(MixedLoss2, self).__init__()
+
+        self.l1_weight      = l1_weight
+        self.l1_loss        = SVBRDFL1Loss()
+        self.scene = scene
+        self.rendering_loss2 = RenderingLoss2(renderer, self.scene)
+        
+
+    def forward(self, input, target):
+        return self.l1_weight * self.l1_loss(input, target) + self.rendering_loss2(input, target)
