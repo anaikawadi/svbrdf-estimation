@@ -29,6 +29,34 @@ def generate_random_scenes(count):
 
     return scenes
 
+def generate_random_view_scenes(count, light):
+    # Randomly distribute both, view and light positions
+    view_positions  = utils.generate_normalized_random_direction(count, 0.001, 0.1) # shape = [count, 3]
+    light_positions = light
+
+    scenes = []
+    for i in range(count):
+        c = Camera(view_positions[i])
+        # Light has lower power as the distance to the material plane is not as large
+        l = Light(light_positions[i], [20.0, 20.0, 20.0]) 
+        scenes.append(Scene(c, l))
+
+    return scenes
+
+def generate_specific_scenes(count, light, view):
+    # Randomly distribute both, view and light positions
+    view_positions  = view
+    light_positions = light
+
+    scenes = []
+    for i in range(count):
+        c = Camera(view_positions[i])
+        # Light has lower power as the distance to the material plane is not as large
+        l = Light(light_positions[i], [20.0, 20.0, 20.0]) 
+        scenes.append(Scene(c, l))
+
+    return scenes
+
 def generate_specular_scenes(count):
     # Only randomly distribute view positions and place lights in a perfect mirror configuration
     view_positions  = utils.generate_normalized_random_direction(count, 0.001, 0.1) # shape = [count, 3]
