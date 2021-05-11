@@ -13,6 +13,7 @@ from persistence import Checkpoint
 from renderers import LocalRenderer, RednerRenderer
 import utils
 import environment as env
+import numpy as np
 
 
 class Identity(torch.nn.Module):
@@ -106,10 +107,11 @@ if args.mode == 'train':
     V[:, :2] = 2.0 * V[:, :2] - 1.0
     
     scene = env.generate_specific_scenes(1, L, V)
-    VIP = [L, V]
     L.requires_grad = True
-    V.requires_grad = True
-    optimizer = torch.optim.Adam(VIP, lr=1e-5)
+    VIP = [L]
+    
+    # V.requires_grad = True
+    optimizer = torch.optim.Adam(VIP, lr=0.1)
     model, optimizer, training_dataloader, validation_dataloader = accelerator.prepare(
         model, optimizer, training_dataloader, validation_dataloader)
     # print("scene", scene.camera)
@@ -133,11 +135,14 @@ if args.mode == 'train':
     # Clear checkpoint in order to free up some memory
     checkpoint.purge()
 
-    
+    lights = []
     for epoch in range(epoch_start, epoch_end):
         for i, batch in enumerate(training_dataloader):
             # Unique index of this batch
-            scene = env.generate_specific_scenes(1, VIP[0], VIP[1])
+            print("Ldet", (L.detach().numpy())[0])
+            lights.append(((L.detach().numpy())[0]).tolist())
+            scene = env.generate_specific_scenes(1, L, L)
+            print("L", L)
             loss_function = MixedLoss2(loss_renderer, scene[0])
             batch_index = epoch * batch_count + i
 
@@ -158,27 +163,55 @@ if args.mode == 'train':
             # Statistics
             writer.add_scalar("loss", loss.item(), batch_index)
             last_batch_inputs = batch_inputs
+    lights.append(((L.detach().numpy())[0]).tolist())
+    print("lights1", lights)
+    print(len(lights))
+    lights2 = []
+    for j in range(len(lights)):
+      if j%10 == 0:
+        lights2.append(lights[j])
+    # print("lights2", lights)
+    # l=np.array(lights)
+    l = np.array(lights2)
+    print("lights3", l)
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    ax.scatter([0.0], [0.0], [0.0], marker='o', c='r')
 
-        if epoch % args.save_frequency == 0:
-            Checkpoint.save(checkpoint_dir, args, model, optimizer, epoch)
 
-        if epoch % args.validation_frequency == 0 and len(validation_data) > 0:
-            model.eval()
+    # v = V.detach().numpy()
+    ax.scatter(l[:,0], l[:,1], l[:,2], marker='.', c='g')
+    # ax.scatter(v[:,0], v[:,1], v[:,2], marker='^', c='b')
 
-            val_loss = 0.0
-            batch_count_val = 0
-            for batch in validation_dataloader:
-                # Construct inputs
-                batch_inputs = batch["inputs"].to(device)
-                batch_svbrdf = batch["svbrdf"].to(device)
+    ax.set_xlim(-3, 3)
+    ax.set_ylim(-3, 3)
+    ax.set_zlim(0., 3.)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    # plt.show()
+    plt.savefig('/content/figures/experiment1.png')
+    plt.show()
+        # if epoch % args.save_frequency == 0:
+        #     Checkpoint.save(checkpoint_dir, args, model, optimizer, epoch)
 
-                outputs = model(batch_inputs)
-                val_loss += loss_function(outputs, batch_svbrdf).item()
-                batch_count_val += 1
-            val_loss /= batch_count_val
+        # if epoch % args.validation_frequency == 0 and len(validation_data) > 0:
+        #     model.eval()
 
-            print("Epoch {:d}, validation loss: {:f}".format(epoch, val_loss))
-            writer.add_scalar("val_loss", val_loss, epoch * batch_count)
+        #     val_loss = 0.0
+        #     batch_count_val = 0
+        #     for batch in validation_dataloader:
+        #         # Construct inputs
+        #         batch_inputs = batch["inputs"].to(device)
+        #         batch_svbrdf = batch["svbrdf"].to(device)
 
-            model.train()
+        #         outputs = model(batch_inputs)
+        #         val_loss += loss_function(outputs, batch_svbrdf).item()
+        #         batch_count_val += 1
+        #     val_loss /= batch_count_val
+
+        #     print("Epoch {:d}, validation loss: {:f}".format(epoch, val_loss))
+        #     writer.add_scalar("val_loss", val_loss, epoch * batch_count)
+
+            # model.train()
 
