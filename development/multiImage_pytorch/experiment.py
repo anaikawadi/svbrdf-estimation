@@ -6,7 +6,7 @@ from accelerate import Accelerator
 from tensorboardX import SummaryWriter
 from cli import parse_args
 from dataset import SvbrdfDataset
-from losses import MixedLoss, MixedLoss2
+from losses import MixedLoss, MixedLoss2, MixedLoss3
 from models import MultiViewModel, SingleViewModel
 from pathlib import Path
 from persistence import Checkpoint
@@ -136,6 +136,7 @@ if args.mode == 'train':
     checkpoint.purge()
 
     lights = []
+    losses = []
     for epoch in range(epoch_start, epoch_end):
         for i, batch in enumerate(training_dataloader):
             # Unique index of this batch
@@ -143,7 +144,10 @@ if args.mode == 'train':
             lights.append(((L.detach().numpy())[0]).tolist())
             scene = env.generate_specific_scenes(1, L, L)
             print("L", L)
-            loss_function = MixedLoss2(loss_renderer, scene[0])
+            if(epoch_end - epoch < 3):
+              loss_function = MixedLoss3(loss_renderer, scene[0])
+            else:
+              loss_function = MixedLoss2(loss_renderer, scene[0])
             batch_index = epoch * batch_count + i
 
             # Construct inputs
@@ -159,11 +163,13 @@ if args.mode == 'train':
 
             print("Epoch {:d}, Batch {:d}, loss: {:f}".format(
                 epoch, i + 1, loss.item()))
-
+            losses.append((epoch, loss.item()))
             # Statistics
             writer.add_scalar("loss", loss.item(), batch_index)
             last_batch_inputs = batch_inputs
     lights.append(((L.detach().numpy())[0]).tolist())
+    with open('/content/experiment1/losses/loss.txt', "w") as text_file:
+      text_file.write(str(losses))
     print("lights1", lights)
     print(len(lights))
     lights2 = []
@@ -183,14 +189,14 @@ if args.mode == 'train':
     ax.scatter(l[:,0], l[:,1], l[:,2], marker='.', c='g')
     # ax.scatter(v[:,0], v[:,1], v[:,2], marker='^', c='b')
 
-    ax.set_xlim(-3, 3)
-    ax.set_ylim(-3, 3)
-    ax.set_zlim(0., 3.)
+    ax.set_xlim(-8, 8)
+    ax.set_ylim(-8, 8)
+    ax.set_zlim(-8., 8.)
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
     # plt.show()
-    plt.savefig('/content/figures/experiment1.png')
+    plt.savefig('/content/experiment1/figures/light.png')
     plt.show()
         # if epoch % args.save_frequency == 0:
         #     Checkpoint.save(checkpoint_dir, args, model, optimizer, epoch)
