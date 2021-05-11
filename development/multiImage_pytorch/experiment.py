@@ -144,10 +144,10 @@ if args.mode == 'train':
             lights.append(((L.detach().numpy())[0]).tolist())
             scene = env.generate_specific_scenes(1, L, L)
             print("L", L)
-            if(epoch_end - epoch < 3):
-              loss_function = MixedLoss3(loss_renderer, scene[0])
-            else:
-              loss_function = MixedLoss2(loss_renderer, scene[0])
+            # if(epoch_end - epoch < 3):
+            loss_function = MixedLoss2(loss_renderer, scene[0])
+            # else:
+              # loss_function = MixedLoss2(loss_renderer, scene[0])
             batch_index = epoch * batch_count + i
 
             # Construct inputs
@@ -157,6 +157,7 @@ if args.mode == 'train':
             # Perform a step
             optimizer.zero_grad()
             outputs = model(batch_inputs)
+            # print("outputs", outputs.size())
             loss = loss_function(outputs, batch_svbrdf)
             accelerator.backward(loss)
             optimizer.step()
@@ -171,7 +172,7 @@ if args.mode == 'train':
     with open('/content/experiment1/losses/loss.txt', "w") as text_file:
       text_file.write(str(losses))
     print("lights1", lights)
-    print(len(lights))
+    # print(len(lights))
     lights2 = []
     for j in range(len(lights)):
       if j%10 == 0:
@@ -179,6 +180,39 @@ if args.mode == 'train':
     # print("lights2", lights)
     # l=np.array(lights)
     l = np.array(lights2)
+    renderer = LocalRenderer()
+    rendered_scene = env.generate_specific_scenes(1, L, L)
+    img = renderer.render(rendered_scene[0], batch_svbrdf[0])
+    fig = plt.figure(frameon=False)
+    # fig.set_size_inches(w,h)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # print("shape", img.size())
+    ax.imshow(img[0].detach().permute(1,2,0), aspect='auto')
+    fig.savefig('/content/experiment1/figures/render2.png')
+
+
+    img = renderer.render(rendered_scene[0], outputs[0])
+    fig = plt.figure(frameon=False)
+    # fig.set_size_inches(w,h)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # print("shape", img.size())
+    ax.imshow(img[0].detach().permute(1,2,0), aspect='auto')
+    fig.savefig('/content/experiment1/figures/render1.png')
+    print("size", batch_inputs.size())
+    # img = renderer.render(rendered_scene[0], batch_inputs[0])
+    # fig = plt.figure(frameon=False)
+    # # fig.set_size_inches(w,h)
+    # ax = plt.Axes(fig, [0., 0., 1., 1.])
+    # ax.set_axis_off()
+    # fig.add_axes(ax)
+    # # print("shape", img.size())
+    # ax.imshow(img[0].detach().permute(1,2,0), aspect='auto')
+    # fig.savefig('/content/experiment1/figures/render3.png')
+
     print("lights3", l)
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
