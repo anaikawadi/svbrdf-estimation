@@ -14,6 +14,10 @@ from renderers import LocalRenderer, RednerRenderer
 import utils
 import environment as env
 import numpy as np
+import sys
+from PIL import Image
+
+
 
 
 class Identity(torch.nn.Module):
@@ -94,7 +98,7 @@ if args.mode == 'train':
 
     # Set up the optimizer
     # TODO: Use betas=(0.5, 0.999)
-    L = torch.FloatTensor(1, 3).uniform_(0.2, 1.0)
+    L = torch.FloatTensor(5, 3).uniform_(0.2, 1.0)
     
     L = L / torch.linalg.norm(L, ord=2, dim=-1, keepdim=True)
     
@@ -106,7 +110,7 @@ if args.mode == 'train':
     
     V[:, :2] = 2.0 * V[:, :2] - 1.0
     
-    scene = env.generate_specific_scenes(1, L, V)
+    scenes = env.generate_specific_scenes(5, L, L)
     L.requires_grad = True
     VIP = [L]
     
@@ -121,7 +125,7 @@ if args.mode == 'train':
     # Set up the loss
     loss_renderer = LocalRenderer()
 
-    loss_function = MixedLoss2(loss_renderer, scene[0])
+    loss_function = MixedLoss2(loss_renderer, scenes)
 
     # Setup statistics stuff
     statistics_dir = checkpoint_dir / "logs"
@@ -142,10 +146,10 @@ if args.mode == 'train':
             # Unique index of this batch
             print("Ldet", (L.detach().numpy())[0])
             lights.append(((L.detach().numpy())[0]).tolist())
-            scene = env.generate_specific_scenes(1, L, L)
+            scenes = env.generate_specific_scenes(5, L, L)
             print("L", L)
             # if(epoch_end - epoch < 3):
-            loss_function = MixedLoss2(loss_renderer, scene[0])
+            loss_function = MixedLoss2(loss_renderer, scenes)
             # else:
               # loss_function = MixedLoss2(loss_renderer, scene[0])
             batch_index = epoch * batch_count + i
@@ -157,7 +161,9 @@ if args.mode == 'train':
             # Perform a step
             optimizer.zero_grad()
             outputs = model(batch_inputs)
-            # print("outputs", outputs.size())
+            print("batch_inputs", batch_inputs.size())
+            print("batch_svbrdfs", batch_svbrdf.size())
+            print("batch_outputs", outputs.size())
             loss = loss_function(outputs, batch_svbrdf)
             accelerator.backward(loss)
             optimizer.step()
@@ -181,7 +187,7 @@ if args.mode == 'train':
     # l=np.array(lights)
     l = np.array(lights2)
     renderer = LocalRenderer()
-    rendered_scene = env.generate_specific_scenes(1, L, L)
+    rendered_scene = env.generate_specific_scenes(1, L.detach(), L.detach())
     img = renderer.render(rendered_scene[0], batch_svbrdf[0])
     fig = plt.figure(frameon=False)
     # fig.set_size_inches(w,h)
@@ -190,7 +196,7 @@ if args.mode == 'train':
     fig.add_axes(ax)
     # print("shape", img.size())
     ax.imshow(img[0].detach().permute(1,2,0), aspect='auto')
-    fig.savefig('/content/experiment1/figures/render2.png')
+    fig.savefig('/content/experiment1/figures/render1.png')
 
 
     img = renderer.render(rendered_scene[0], outputs[0])
@@ -201,17 +207,162 @@ if args.mode == 'train':
     fig.add_axes(ax)
     # print("shape", img.size())
     ax.imshow(img[0].detach().permute(1,2,0), aspect='auto')
-    fig.savefig('/content/experiment1/figures/render1.png')
-    print("size", batch_inputs.size())
-    # img = renderer.render(rendered_scene[0], batch_inputs[0])
-    # fig = plt.figure(frameon=False)
-    # # fig.set_size_inches(w,h)
-    # ax = plt.Axes(fig, [0., 0., 1., 1.])
-    # ax.set_axis_off()
-    # fig.add_axes(ax)
-    # # print("shape", img.size())
-    # ax.imshow(img[0].detach().permute(1,2,0), aspect='auto')
-    # fig.savefig('/content/experiment1/figures/render3.png')
+    fig.savefig('/content/experiment1/figures/render2.png')
+    # print("size", batch_inputs.size())
+
+    
+    torch.add(L, 5)
+    print("L", L)
+    rendered_scene = env.generate_specific_scenes(1, L, L)
+    img = renderer.render(rendered_scene[0], batch_svbrdf[0])
+    fig = plt.figure(frameon=False)
+    # fig.set_size_inches(w,h)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # print("shape", img.size())
+    ax.imshow(img[0].detach().permute(1,2,0), aspect='auto')
+    fig.savefig('/content/experiment1/figures/render3.png')
+
+    print("size", batch_inputs[0][0].size())
+    img = batch_inputs[0][0]
+    fig = plt.figure(frameon=False)
+    # fig.set_size_inches(w,h)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # print("shape", img.size())
+    ax.imshow(img.detach().permute(1,2,0), aspect='auto')
+    fig.savefig('/content/experiment1/figures/render4.png')
+
+    print("size", batch_inputs[0][0].size())
+    normals, diffuse, roughness, specular = utils.unpack_svbrdf(outputs[0])
+    img = normals
+    fig = plt.figure(frameon=False)
+    # fig.set_size_inches(w,h)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # print("shape", img.size())
+    ax.imshow(img.detach().permute(1,2,0), aspect='auto')
+    fig.savefig('/content/experiment1/figures/output_normal.png')
+    
+    img = diffuse
+    fig = plt.figure(frameon=False)
+    # fig.set_size_inches(w,h)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # print("shape", img.size())
+    ax.imshow(img.detach().permute(1,2,0), aspect='auto')
+    fig.savefig('/content/experiment1/figures/output_diffuse.png')
+    
+    img = roughness
+    fig = plt.figure(frameon=False)
+    # fig.set_size_inches(w,h)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # print("shape", img.size())
+    ax.imshow(img.detach().permute(1,2,0), aspect='auto')
+    fig.savefig('/content/experiment1/figures/output_roughness.png')
+    
+    img = specular
+    fig = plt.figure(frameon=False)
+    # fig.set_size_inches(w,h)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # print("shape", img.size())
+    ax.imshow(img.detach().permute(1,2,0), aspect='auto')
+    fig.savefig('/content/experiment1/figures/output_specular.png')
+    
+
+    print("size", batch_inputs[0][0].size())
+    normals, diffuse, roughness, specular = utils.unpack_svbrdf(batch_svbrdf[0])
+    img = normals
+    fig = plt.figure(frameon=False)
+    # fig.set_size_inches(w,h)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # print("shape", img.size())
+    ax.imshow(img.detach().permute(1,2,0), aspect='auto')
+    fig.savefig('/content/experiment1/figures/target_normal.png')
+    
+    img = diffuse
+    fig = plt.figure(frameon=False)
+    # fig.set_size_inches(w,h)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # print("shape", img.size())
+    ax.imshow(img.detach().permute(1,2,0), aspect='auto')
+    fig.savefig('/content/experiment1/figures/target_diffuse.png')
+    
+    img = roughness
+    fig = plt.figure(frameon=False)
+    # fig.set_size_inches(w,h)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # print("shape", img.size())
+    ax.imshow(img.detach().permute(1,2,0), aspect='auto')
+    fig.savefig('/content/experiment1/figures/target_roughness.png')
+    
+    img = specular
+    fig = plt.figure(frameon=False)
+    # fig.set_size_inches(w,h)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # print("shape", img.size())
+    ax.imshow(img.detach().permute(1,2,0), aspect='auto')
+    fig.savefig('/content/experiment1/figures/target_specular.png')
+
+    images = [Image.open(x) for x in ['/content/experiment1/figures/target_normal.png', '/content/experiment1/figures/target_diffuse.png', '/content/experiment1/figures/target_roughness.png', '/content/experiment1/figures/target_specular.png']]
+    widths, heights = zip(*(i.size for i in images))
+
+    total_width = sum(widths)
+    max_height = max(heights)
+
+    new_im = Image.new('RGB', (total_width, max_height))
+
+    x_offset = 0
+    for im in images:
+      new_im.paste(im, (x_offset,0))
+      x_offset += im.size[0]
+
+    new_im.save('/content/experiment1/figures/target_svbrdf.png')
+    
+
+    images = [Image.open(x) for x in ['/content/experiment1/figures/output_normal.png', '/content/experiment1/figures/output_diffuse.png', '/content/experiment1/figures/output_roughness.png', '/content/experiment1/figures/output_specular.png']]
+    widths, heights = zip(*(i.size for i in images))
+
+    total_width = sum(widths)
+    max_height = max(heights)
+
+    new_im = Image.new('RGB', (total_width, max_height))
+
+    x_offset = 0
+    for im in images:
+      new_im.paste(im, (x_offset,0))
+      x_offset += im.size[0]
+
+    new_im.save('/content/experiment1/figures/output_svbrdf.png')
+    
+
+    print("size", batch_inputs[0][0].size())
+    normals, diffuse, roughness, specular = utils.unpack_svbrdf(outputs[0])
+    img = normals
+    fig = plt.figure(frameon=False)
+    # fig.set_size_inches(w,h)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    # print("shape", img.size())
+    ax.imshow(img.detach().permute(1,2,0), aspect='auto')
+    fig.savefig('/content/experiment1/figures/output_normal.png')
 
     print("lights3", l)
     fig = plt.figure()
