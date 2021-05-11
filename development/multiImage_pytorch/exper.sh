@@ -1,13 +1,13 @@
 #!/bin/bash
 
-input_dir="/content/materialsData_multi_image/train"
+input_dir="/content/materialsData_multi_image/exper1train"
 image_count=0
 image_size=256
 scale_mode='crop'
 used_image_count=5
 # model_dir="./models"
 model_dir="./content/drive/MyDrive"
-epochs=100
+epochs=200
 save_frequency=500
 model_type="multi"
 
