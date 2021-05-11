@@ -54,13 +54,13 @@ class RenderingLoss(nn.Module):
         return loss
 
 class RenderingLoss2(nn.Module):
-    def __init__(self, renderer, scene):
+    def __init__(self, renderer, scenes):
         super(RenderingLoss2, self).__init__()
         
         self.renderer = renderer
         self.random_configuration_count   = 3
         self.specular_configuration_count = 6
-        self.scene = scene
+        self.scenes = scenes
 
     def forward(self, input, target):
         batch_size = input.shape[0]
@@ -73,10 +73,10 @@ class RenderingLoss2(nn.Module):
             target_svbrdf = target[i]
             input_renderings  = []
             target_renderings = []
-            # for scene in scenes:
+            for scene in self.scenes:
             # print("type", type(self.scene))
-            input_renderings.append(self.renderer.render(self.scene, input_svbrdf))
-            target_renderings.append(self.renderer.render(self.scene, target_svbrdf))
+              input_renderings.append(self.renderer.render(scene, input_svbrdf))
+              target_renderings.append(self.renderer.render(scene, target_svbrdf))
             batch_input_renderings.append(torch.cat(input_renderings, dim=0))
             batch_target_renderings.append(torch.cat(target_renderings, dim=0))
             # fig = plt.figure(frameon=False)
@@ -151,13 +151,13 @@ class MixedLoss(nn.Module):
         return self.l1_weight * self.l1_loss(input, target) + self.rendering_loss(input, target)
 
 class MixedLoss2(nn.Module):
-    def __init__(self, renderer, scene, l1_weight = 0.1):
+    def __init__(self, renderer, scenes, l1_weight = 0.1):
         super(MixedLoss2, self).__init__()
 
         self.l1_weight      = l1_weight
         self.l1_loss        = SVBRDFL1Loss()
-        self.scene = scene
-        self.rendering_loss2 = RenderingLoss2(renderer, self.scene)
+        self.scenes = scenes
+        self.rendering_loss2 = RenderingLoss2(renderer, self.scenes)
         
 
     def forward(self, input, target):
